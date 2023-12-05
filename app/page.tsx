@@ -1,112 +1,169 @@
-import Image from 'next/image'
+'use client';
+
+import { useState } from "react";
+
+export interface Summary {
+  authors: string[],
+  totalPullRequests: number,
+  totalChangedFiles: number,
+  totalAditions: number,
+  totalDeletions: number
+}
+export interface PullRequestItem {
+  number: number,
+  type: "feature" | "bugfix" | "hotfix",
+  description: string,
+  date: Date,
+  changedFiles: number,
+  additions: number,
+  deletions: number,
+  author: string
+}
 
 export default function Home() {
+  const [summary, setSummary] = useState<Summary>(undefined as unknown as Summary);
+  const [pullRequestList, setPullRequestList] = useState<PullRequestItem[]>([] as PullRequestItem[]);
+
+  const onFilePick = (event: any) => {
+    const file = event.target.files[0]
+    const reader = new FileReader()
+    reader.onload = (f: ProgressEvent) => {
+
+      try {
+        // @ts-ignore
+        const jsonData = JSON.parse(f.target.result as string);
+
+        const parsedPullRequestList: PullRequestItem[] = jsonData.map((item: any) => {
+          let typeAux = item.title.split(":")[0].toLowerCase();
+          let descriptionAux = (item.title + item.body).split(":")[1];
+
+          if ( descriptionAux ) {
+            descriptionAux = descriptionAux.charAt(1).toUpperCase() + descriptionAux.slice(2);
+            descriptionAux = descriptionAux.replaceAll("…", "");
+          } else {
+             descriptionAux = (item.title + item.body);
+          }
+
+          if ( typeAux.includes("/") ) {
+            descriptionAux = (typeAux.split("/")[1].charAt(0).toUpperCase() + typeAux.split("/")[1].slice(1) + '\n' + item.body);
+          }
+
+          typeAux = typeAux.split("/")[0].toLowerCase();
+
+          if ( typeAux.includes("feature") || typeAux.includes("feat") ) {
+            item.type = "feature";
+          } else if ( typeAux.includes("bugfix") || typeAux.includes("fix") ) {
+            item.type = "bugfix";
+          } else if ( typeAux.includes("hotfix") ) {
+            item.type = "hotfix";
+          }
+
+          return {
+            number: item.number,
+            type: item.type,
+            description: descriptionAux,
+            date: new Date(item.createdAt),
+            changedFiles: item.changedFiles,
+            additions: item.additions,
+            deletions: item.deletions,
+            author: item.author.name
+          }
+        });
+
+        const parsedSummary: Summary = {
+          authors: Array.from(new Set(parsedPullRequestList.map((item:PullRequestItem) => item.author))),
+          totalPullRequests: parsedPullRequestList.length,
+          totalChangedFiles: parsedPullRequestList.reduce((sum: number, item:PullRequestItem) => sum + item.changedFiles, 0),
+          totalAditions: parsedPullRequestList.reduce((sum: number, item:PullRequestItem) => sum + item.additions, 0),
+          totalDeletions: parsedPullRequestList.reduce((sum: number, item:PullRequestItem) => sum + item.deletions, 0),
+        }
+
+        setSummary(parsedSummary);
+        setPullRequestList(parsedPullRequestList);
+      } catch (e) {
+        console.log('Error parsing JSON file', e)
+      }
+    }
+    reader.readAsText(file)
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
+      <div className="block mb-10">
+        <input type="file" name="json" onChange={onFilePick} />
       </div>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+      { summary &&
+        <>
+          <div className="summary bg-slate-100 dark:bg-slate-900 px-7 py-5 rounded-lg flex flex-row gap-5 mb-2">
+            <div className="item">
+              <div className="title text-center text-[0.7rem] mb-2 text-slate-400 dark:text-slate-500">PULL REQUESTS</div>
+              <div className="value text-3xl text-center">{(summary.totalPullRequests)}</div>
+            </div>
+            <div className="item">
+              <div className="title text-center text-[0.7rem] mb-2 text-slate-400 dark:text-slate-500">CHANGED FILES</div>
+              <div className="value text-3xl text-center">{summary.totalChangedFiles}</div>
+            </div>
+            <div className="item">
+              <div className="title text-center text-[0.7rem] mb-2 text-slate-400 dark:text-slate-500">CHANGED LINES</div>
+              <div className="value text-3xl text-center">{summary.totalAditions}</div>
+            </div>
+          </div>
+          <div className="authors bg-slate-100 dark:bg-slate-900 px-7 py-5 rounded-lg flex flex-row gap-5 mb-2">
+            <div className="item">
+              <div className="title text-center text-[0.7rem] mb-2 text-slate-400 dark:text-slate-500">AUTHORS</div>
+              {
+                summary.authors.map((item: string, index: number) => {
+                  return(
+                    <div key={index} className="value text-xl text-center">{item}</div>
+                  );
+                })
+              }
+            </div>
+          </div>
+        </>
+      }
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+      <div className="list flex flex-col gap-2">
+        {
+          pullRequestList.map((item: PullRequestItem, index: number) => {
+            return(
+              <div key={index} className="item bg-slate-100 dark:bg-slate-900 px-7 py-5 rounded-lg flex flex-col gap-5">
+                <div className="header flex flex-row justify-between">
+                  <div className="flex gap-3">
+                    <div className="number text-slate-400 dark:text-slate-500">#{item.number}</div>
+                    <div className={`
+                      type 
+                      ${item.type === 'feature' ? 'bg-teal-300 text-teal-900 dark:bg-teal-900 dark:text-teal-400 px-2 rounded-full' : ''} 
+                      ${item.type === 'bugfix' ? 'bg-orange-300 text-orange-900 dark:bg-orange-900 dark:text-orange-400 px-2 rounded-full' : ''} 
+                      ${item.type === 'hotfix' ? 'bg-fuchsia-300 text-fuchsia-900 dark:bg-fuchsia-900 dark:text-fuchsia-400 px-2 rounded-full' : ''} 
+                    `}>
+                      {item.type}
+                    </div>
+                  </div>
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+                  <div className="date text-slate-400 dark:text-slate-500">{("0" + item.date.getDate()).slice(-2)}/{("0" + (item.date.getMonth() + 1)).slice(-2)}/{item.date.getFullYear()}</div>
+                </div>
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
+                <div className="description text-lg whitespace-pre-wrap">{item.description}</div>
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+                <div className="footer flex justify-between">
+                  {
+                    summary?.authors?.length > 1 
+                      ? <div className="author text-slate-400 dark:text-slate-500" >{item.author}</div>
+                      : <div className="author text-slate-400 dark:text-slate-500" ></div>
+                  }
+
+                  <div className="flex gap-3">
+                    <div className="changedFiles flex items-center bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-400 px-2 rounded-full"><span className="text-[0.7rem] mr-2">CHANGED FILES:</span>{item.changedFiles}</div>
+                    <div className="additions bg-emerald-300 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-400 px-2 rounded-full">+{item.additions}</div>
+                    <div className="deletions bg-red-300 text-red-900 dark:bg-red-900 dark:text-red-400 px-2 rounded-full">-{item.deletions}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        }
       </div>
     </main>
   )

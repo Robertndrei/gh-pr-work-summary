@@ -116,7 +116,7 @@ export default function Home() {
           <div className="mockup-code mx-auto w-fit max-w-full">
             <pre data-prefix="$"><code>gh pr list \</code></pre>
             <pre data-prefix=""><code>-L 1000 \</code></pre>
-            <pre data-prefix=""><code>--search "is:closed created:2023-11-01..2023-11-30 author:AUTHOR_USERNAME" \</code></pre>
+            <pre data-prefix=""><code>--search {'"'}is:closed created:2023-11-01..2023-11-30 author:AUTHOR_USERNAME{'"'} \</code></pre>
             <pre data-prefix=""><code>--json number,title,body,author,createdAt,additions,deletions,changedFiles \</code></pre>
             <pre data-prefix=""><code>{'>'} FILE_LOCATION.json</code></pre>
           </div>

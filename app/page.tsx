@@ -56,10 +56,10 @@ export default function Home() {
 
           if ( typeAux.includes("feature") || typeAux.includes("feat") ) {
             item.type = "feature";
-          } else if ( typeAux.includes("bugfix") || typeAux.includes("fix") ) {
-            item.type = "bugfix";
           } else if ( typeAux.includes("hotfix") ) {
             item.type = "hotfix";
+          } else if ( typeAux.includes("bugfix") || typeAux.includes("fix") ) {
+            item.type = "bugfix";
           }
 
           return {
